@@ -1,14 +1,20 @@
-internal class ArrayStorage<T> {
-    init() {
+internal class CoWArrayStorage<T> {
+    public init() {
         self.memory = nil
         self.capacity = 0
         self.count = 0
     }
+    
+    public init(copy: CoWArrayStorage<T>) {
+        self.count = copy.count
+        self.capacity = count
+        self.memory = UnsafeMutablePointer<T>.allocate(capacity: count)
+        
+        memory?.initialize(from: copy.memory!, count: count)
+    }
 
     deinit {
-        for i in 0..<count {
-            remove(at: count - 1 - i)
-        }
+        memory?.deinitialize(count: count)
         reserveCapacity(0)
     }
     
@@ -79,19 +85,44 @@ protocol A {
     subscript(index: Int) -> Int { get set }
 }
 
-//public struct CoWArray<T> {
-//    public init()
-//
-//    public var count: Int { get }
-//
-//    public subscript(index: Int) -> T { get set }
-//
-//    public mutating func append(_ element: T)
-//
-//    public mutating func remove(at index: Int)
-//}
+public struct CoWArray<T> {
+    public init() {
+        self.storage = .init()
+    }
 
-func f() {
-    var a = ArrayStorage<Int>()
-    isKnownUniquelyReferenced(&<#T##object: T##T#>)
+    public var count: Int {
+        return storage.count
+    }
+
+    public subscript(index: Int) -> T {
+        get {
+            return storage[index]
+        }
+        set {
+            copyStorageIfShared()
+            storage[index] = newValue
+        }
+    }
+
+    public mutating func append(_ element: T) {
+        copyStorageIfShared()
+        storage.append(element)
+    }
+
+    public mutating func remove(at index: Int) {
+        copyStorageIfShared()
+        storage.remove(at: index)
+    }
+    
+    private mutating func copyStorageIfShared() {
+        if isKnownUniquelyReferenced(&storage) {
+            return
+        }
+        
+        storage = .init(copy: storage)
+    }
+    
+    private var storage: CoWArrayStorage<T>
 }
+
+
