@@ -53,12 +53,12 @@ public struct CoWArray<T> {
 
 ```swift
 internal class CoWArrayStorage<T> {
-	public init()
-	public init(copy: CoWArrayStorage<T>)
-	public var count: Int { get }
-	public subscript(index: Int) -> T { get set }
-	public func append(_ element: T)
-	public func remove(at index: Int)
+    public init()
+    public init(copy: CoWArrayStorage<T>)
+    public var count: Int { get }
+    public subscript(index: Int) -> T { get set }
+    public func append(_ element: T)
+    public func remove(at index: Int)
 }
 ```
 
@@ -198,11 +198,14 @@ internal class CoWArrayStorage<T> {
 
 `remove` では、指定されたインデックスの要素を削除した後、後続の要素を 1 つずつ前にずらします。まず、削除する操作は `deinitialize` です。これによって削除された場所は未初期化になります。そして、 1 つ後ろの要素を、削除された要素のあった場所に移動させるわけですが、これは `reserveCapacity` のときと同様、移動元が初期化済で、移動先が未初期化なので、 `moveInitialize` で書けます。最後に要素数を 1 減らします。
 
+[`moveInitialize`](https://developer.apple.com/documentation/swift/unsafemutablepointer/2322148-moveinitialize) は2つのメモリ領域が共有領域を持っていても、要素ごとに move していくのでうまく動きます。
+
 ```swift
     public func remove(at index: Int) {
         (memory! + index).deinitialize()
-        for i in index..<count {
-            (memory! + i).moveInitialize(from: (memory! + i + 1), count: 1)
+        let moveNum = count - index - 1
+        if moveNum > 0 {
+            (memory! + index).moveInitialize(from: (memory! + index + 1), count: moveNum)
         }
         count -= 1
     }
@@ -285,5 +288,3 @@ public struct CoWArray<T> {
 # ソース
 
 [完成したソースはこちらにアップしてあります。](https://github.com/omochi/swift-cow-example)
-
-

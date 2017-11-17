@@ -44,8 +44,9 @@ internal class CoWArrayStorage<T> {
     
     public func remove(at index: Int) {
         (memory! + index).deinitialize()
-        for i in index..<count {
-            (memory! + i).moveInitialize(from: (memory! + i + 1), count: 1)
+        let moveNum = count - index - 1
+        if moveNum > 0 {
+            (memory! + index).moveInitialize(from: (memory! + index + 1), count: moveNum)
         }
         count -= 1
     }
